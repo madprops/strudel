@@ -5,6 +5,7 @@ from pathlib import Path
 
 settings = {}
 speech = []
+voices = []
 window = None
 num_items = 20
 
