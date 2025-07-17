@@ -1,6 +1,6 @@
 synth=espeak
 voice=pt
-speed=1.5
+speed=1.0
 num_items=50
 default_text=
 width=660

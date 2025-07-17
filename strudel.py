@@ -366,9 +366,9 @@ def make_window():
         btn.pack(side="left", padx=(0, 5), pady=2)
 
         # Add the entry
-        entry = tk.Entry(row_frame, width=50, font=("sans", 14))
+        entry = tk.Entry(row_frame, width=30, font=("sans", 14))
         entry.insert(0, speech[n])
-        entry.pack(side="left", padx=5, pady=2, fill="x", expand=True)
+        entry.pack(side="left", padx=0, pady=2, fill="x", expand=True)
         input_entries.append(entry)
 
         # Button container for up/down buttons
