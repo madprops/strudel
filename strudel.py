@@ -1,3 +1,4 @@
+import os
 import re
 import tkinter as tk
 import threading
@@ -20,12 +21,23 @@ speech_lock = threading.Lock()
 def main():
     try:
         # Setup signal handler for SIGINT (Ctrl+C)
+        # Signal handling needs to be set up immediately for both SIGINT and SIGTERM
         signal.signal(signal.SIGINT, signal_handler)
+        signal.signal(signal.SIGTERM, signal_handler)
+
+        # Make sure Python's signal handling works during Tkinter's mainloop
+        # by ensuring signals are checked regularly
+        def check_signals():
+            # Check signals every 100ms
+            window.after(100, check_signals)
 
         get_settings()
         get_speech()
         get_voices()
         make_window()
+
+        # Start the signal checking loop once window is created
+        window.after(100, check_signals)
 
         window.mainloop()
     except Exception as e:
@@ -269,7 +281,6 @@ def stop_speech():
                 print(f"Error stopping speech: {e}")
                 # Force kill if terminate fails
                 try:
-                    import os
                     os.kill(current_speech_process.pid, signal.SIGKILL)
                 except:
                     pass
@@ -504,12 +515,15 @@ def signal_handler(sig, frame):
     """Handle Ctrl+C by cleaning up and exiting gracefully"""
     print("\nExiting Strudel...")
 
-    if window:
-        window.quit()  # Properly terminate the Tkinter main loop
-        on_closing()   # Call our cleanup function
-    else:
-        # If window isn't initialized yet, just exit
-        sys.exit(0)
+    # Stop any speech if running
+    try:
+        stop_speech()
+    except:
+        pass
+
+    # Don't try to interact with the window - it might be causing the hang
+    # Force immediate exit with os._exit which doesn't run cleanup handlers
+    os._exit(0)
 
 def move_item_up(index):
     save_speech()
