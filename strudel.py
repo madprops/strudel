@@ -51,6 +51,21 @@ def make_window():
     window.title("Strudel")
     window.configure(bg="#2d2d2d")
     window.geometry("660x700")
+
+    # Set application icon
+    try:
+        icon_path = os.path.join(os.path.dirname(__file__), "icon.png")
+
+        if not os.path.exists(icon_path):
+            # Fall back to jpg if png doesn't exist
+            icon_path = os.path.join(os.path.dirname(__file__), "icon.jpg")
+
+        if os.path.exists(icon_path):
+            icon = tk.PhotoImage(file=icon_path)
+            window.iconphoto(True, icon)
+    except Exception as e:
+        print(f"Error setting window icon: {e}")
+
     font = ("sans", 16)
     input_entries = []
 
