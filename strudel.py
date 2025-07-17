@@ -1,11 +1,11 @@
 import re
 import tkinter as tk
-from tkinter import ttk, messagebox
-from subprocess import Popen, PIPE
-from pathlib import Path
 import threading
 import signal
 import sys
+from tkinter import ttk, messagebox
+from subprocess import Popen, PIPE
+from pathlib import Path
 
 settings = {}
 speech = []
@@ -81,14 +81,18 @@ def make_window():
     # Filter for Linux scrolling events too
     def _on_scroll_up(event):
         widget = window.winfo_containing(event.x_root, event.y_root)
+
         if isinstance(widget, ttk.Combobox) or "TCombobox" in str(widget):
             return
+
         canvas.yview_scroll(-1, "units")
 
     def _on_scroll_down(event):
         widget = window.winfo_containing(event.x_root, event.y_root)
+
         if isinstance(widget, ttk.Combobox) or "TCombobox" in str(widget):
             return
+
         canvas.yview_scroll(1, "units")
 
     canvas.bind_all("<Button-4>", _on_scroll_up)  # Linux
@@ -181,6 +185,7 @@ def make_window():
 
     speed_combo = ttk.Combobox(bottom, textvariable=speed_var, values=speeds, width=5,
                               font=("sans", 12), style="Strudel.TCombobox")
+
     speed_combo.pack(side="left", padx=(0, 10))
 
     # Remove focus and highlighting when item is selected
@@ -471,6 +476,7 @@ def reset_inputs():
     """Reset all inputs to default values with confirmation"""
     # Show confirmation dialog
     confirm = messagebox.askyesno("Confirm Reset", "Are you sure you want to reset all inputs to default?")
+
     if not confirm:
         return
 
@@ -486,7 +492,7 @@ def reset_inputs():
         settings["voice"] = voices[0]
 
     # Reset speed to default if it exists
-    if 'speed' in settings:
+    if "speed" in settings:
         speed_var.set("1.0")
         settings["speed"] = "1.0"
 
@@ -497,6 +503,7 @@ def reset_inputs():
 def signal_handler(sig, frame):
     """Handle Ctrl+C by cleaning up and exiting gracefully"""
     print("\nExiting Strudel...")
+
     if window:
         window.quit()  # Properly terminate the Tkinter main loop
         on_closing()   # Call our cleanup function
@@ -505,6 +512,8 @@ def signal_handler(sig, frame):
         sys.exit(0)
 
 def move_item_up(index):
+    save_speech()
+
     """Move a speech item up in the list (swap with the item above it)"""
     if index <= 0:
         return  # Can't move the first item up
@@ -523,6 +532,8 @@ def move_item_up(index):
     save_speech()
 
 def move_item_down(index):
+    save_speech()
+
     """Move a speech item down in the list (swap with the item below it)"""
     if index >= len(speech) - 1:
         return  # Can't move the last item down
