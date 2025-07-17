@@ -376,13 +376,13 @@ def make_window():
         button_container.pack(side="right", padx=5)
 
         # Up button
-        up_btn = tk.Button(button_container, text="▲", font=("sans", 11), height=1, width=2,
+        up_btn = tk.Button(button_container, text="▲", font=("sans", BUTTON_SIZE), height=1, width=1,
                           command=lambda n=n: move_item_up(n))
 
         up_btn.pack(side="left", padx=(2, 0))
 
         # Down button
-        down_btn = tk.Button(button_container, text="▼", font=("sans", 11), height=1, width=2,
+        down_btn = tk.Button(button_container, text="▼", font=("sans", BUTTON_SIZE), height=1, width=1,
                             command=lambda n=n: move_item_down(n))
 
         down_btn.pack(side="left", padx=(0, 5))
