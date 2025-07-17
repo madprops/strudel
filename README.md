@@ -1,1 +1,5 @@
-![](https://i.imgur.com/XbRdu3L.jpg)
+![](screenshot.png)
+
+This is a simple soundboard.
+
+Just enter text and press Speak to use that line.
