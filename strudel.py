@@ -82,30 +82,42 @@ def make_window():
 
     # Add mouse wheel scrolling
     def _on_mousewheel(event):
-        # Check if the mousewheel event is over a combobox
-        widget = window.winfo_containing(event.x_root, event.y_root)
-        if isinstance(widget, ttk.Combobox) or "TCombobox" in str(widget):
-            return  # Don't scroll the canvas if over a combobox
-        canvas.yview_scroll(int(-1*(event.delta/120)), "units")
+        try:
+            # Check if the mousewheel event is over a combobox
+            widget = window.winfo_containing(event.x_root, event.y_root)
+            if isinstance(widget, ttk.Combobox) or "TCombobox" in str(widget):
+                return  # Don't scroll the canvas if over a combobox
+            canvas.yview_scroll(int(-1*(event.delta/120)), "units")
+        except KeyError:
+            # Skip scrolling when dropdown is active
+            pass
 
     canvas.bind_all("<MouseWheel>", _on_mousewheel)  # Windows and MacOS
 
     # Filter for Linux scrolling events too
     def _on_scroll_up(event):
-        widget = window.winfo_containing(event.x_root, event.y_root)
+        try:
+            widget = window.winfo_containing(event.x_root, event.y_root)
 
-        if isinstance(widget, ttk.Combobox) or "TCombobox" in str(widget):
-            return
+            if isinstance(widget, ttk.Combobox) or "TCombobox" in str(widget):
+                return
 
-        canvas.yview_scroll(-1, "units")
+            canvas.yview_scroll(-1, "units")
+        except KeyError:
+            # Skip scrolling when dropdown is active
+            pass
 
     def _on_scroll_down(event):
-        widget = window.winfo_containing(event.x_root, event.y_root)
+        try:
+            widget = window.winfo_containing(event.x_root, event.y_root)
 
-        if isinstance(widget, ttk.Combobox) or "TCombobox" in str(widget):
-            return
+            if isinstance(widget, ttk.Combobox) or "TCombobox" in str(widget):
+                return
 
-        canvas.yview_scroll(1, "units")
+            canvas.yview_scroll(1, "units")
+        except KeyError:
+            # Skip scrolling when dropdown is active
+            pass
 
     canvas.bind_all("<Button-4>", _on_scroll_up)  # Linux
     canvas.bind_all("<Button-5>", _on_scroll_down)   # Linux
@@ -192,7 +204,7 @@ def make_window():
     speed_label.pack(side="left", padx=(10, 5))
 
     # Available speech speeds
-    speeds = ["0.5", "0.75", "1.0", "1.25", "1.5", "1.75", "2.0"]
+    speeds = ["0.25", "0.5", "0.75", "1.0", "1.25", "1.5", "1.75", "2.0"]
     speed_var = tk.StringVar(value=get_speed())
 
     speed_combo = ttk.Combobox(bottom, textvariable=speed_var, values=speeds, width=5,
