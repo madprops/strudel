@@ -11,14 +11,11 @@ settings = {}
 speech = []
 voices = []
 window = None
-num_items = 20  # This could be made configurable in settings
 input_entries = []
 voice_var = None
 speed_var = None  # Variable for speech speed
 current_speech_process = None
 speech_lock = threading.Lock()
-
-DEFAULT_TEXT = ""  # Default text for speech entries
 
 def main():
     try:
@@ -41,7 +38,7 @@ def make_window():
     window = tk.Tk()
     window.title("Strudel")
     window.configure(bg="#2d2d2d")
-    window.geometry("600x700")
+    window.geometry("660x700")
     font = ("sans", 16)
     input_entries = []
 
@@ -98,7 +95,7 @@ def make_window():
     canvas.bind_all("<Button-5>", _on_scroll_down)   # Linux
 
     # Create speech input rows using grid layout
-    for n in range(num_items):
+    for n in range(get_num_items()):
         btn = tk.Button(frame, text="Speak", font=("sans", 11), height=1, width=6, command=lambda n=n: speak_callback(n))
         btn.grid(row=n, column=0, padx=5, pady=2, sticky="nsw")
 
@@ -106,6 +103,18 @@ def make_window():
         entry.insert(0, speech[n])
         entry.grid(row=n, column=1, padx=5, pady=2, sticky="ew")
         input_entries.append(entry)
+
+        # Up button
+        up_btn = tk.Button(frame, text="▲", font=("sans", 11), height=1, width=2,
+                          command=lambda n=n: move_item_up(n))
+
+        up_btn.grid(row=n, column=2, padx=(2, 0), pady=2, sticky="ns")
+
+        # Down button
+        down_btn = tk.Button(frame, text="▼", font=("sans", 11), height=1, width=2,
+                            command=lambda n=n: move_item_down(n))
+
+        down_btn.grid(row=n, column=3, padx=(0, 5), pady=2, sticky="ns")
 
     # Make the entry columns expand
     frame.grid_columnconfigure(1, weight=1)
@@ -118,7 +127,7 @@ def make_window():
     voice_label = tk.Label(bottom, text="Voice:", bg="#2d2d2d", fg="white", font=("sans", 12))
     voice_label.pack(side="left", padx=(0, 5))
 
-    voice_var = tk.StringVar(value=settings.get("voice", voices[0] if voices else ""))
+    voice_var = tk.StringVar(value=get_voice())
 
     # Apply a style to make the combobox match button height
     style = ttk.Style()
@@ -168,7 +177,7 @@ def make_window():
 
     # Available speech speeds
     speeds = ["0.5", "0.75", "1.0", "1.25", "1.5", "1.75", "2.0"]
-    speed_var = tk.StringVar(value=settings.get("speed", "1.0"))
+    speed_var = tk.StringVar(value=get_speed())
 
     speed_combo = ttk.Combobox(bottom, textvariable=speed_var, values=speeds, width=5,
                               font=("sans", 12), style="Strudel.TCombobox")
@@ -208,6 +217,7 @@ def make_window():
     # Save button
     save_btn = tk.Button(bottom, text="Save", font=("sans", 11), height=button_height,
                         command=lambda: (save_speech(), save_settings()))
+
     save_btn.pack(side="right", padx=5)
 
     # Reset button
@@ -230,7 +240,11 @@ def on_closing():
     sys.exit(0)
 
 def speak_callback(n):
-    s = input_entries[n].get()
+    s = input_entries[n].get().strip()
+
+    if not s:
+      return
+
     v = voice_var.get()
     # Update speed setting to current selection
     settings["speed"] = speed_var.get()
@@ -261,12 +275,17 @@ def speak_thread(n, s, v):
 
     try:
         # Get current speed setting
-        speed = settings.get("speed", "1.0")
+        speed = get_speed()
         # Convert speed to words per minute for espeak (-s option)
         # Default espeak speed is 175 words per minute
         base_wpm = 175
-        speed_float = float(speed)
-        wpm = int(base_wpm * speed_float)
+
+        try:
+            speed_float = float(speed)
+            wpm = int(base_wpm * speed_float)
+        except (ValueError, TypeError):
+            # Default to normal speed if conversion fails
+            wpm = base_wpm
 
         with speech_lock:
             current_speech_process = Popen(["espeak", "-v", v, "-s", str(wpm), s], stderr=PIPE)
@@ -286,7 +305,7 @@ def speak_thread(n, s, v):
             # (We're not updating speech here anymore as it's done in save_speech)
 
             # Update voice setting if it changed
-            if settings.get("voice") != v:
+            if get_voice() != v:
                 settings["voice"] = v
                 # Use after() to schedule the save from the main thread
                 window.after(0, save_settings)
@@ -344,8 +363,26 @@ def get_settings():
         print(f"Error loading settings: {e}")
         settings = {}  # Reset to empty if there was an error
 
+def get_default_text():
+  return settings.get("default_text", "")
+
+def get_voice():
+  return settings.get("voice", voices[0] if voices else "")
+
+def get_speed():
+  return settings.get("speed", "1.0")
+
+def get_num_items():
+  # Convert num_items to int, with 50 as default
+  try:
+    return int(settings.get("num_items", 50))
+  except ValueError:
+    return 50
+
 def get_speech():
     global speech
+
+    num_items = get_num_items()
 
     try:
         filepath = get_speech_path()
@@ -353,17 +390,17 @@ def get_speech():
 
         with open(filepath, "r") as file:
             speech = file.read().split("\n")
+            # Keep empty strings by removing the filter
             speech = list(map(str.strip, speech))
-            speech = list(filter(None, speech))
 
         # Fill with default text if needed
         for n in range(0, num_items):
             if n >= len(speech):
-                speech.append(DEFAULT_TEXT)
+                speech.append(get_default_text())
     except Exception as e:
         print(f"Error loading speech: {e}")
         # Create default entries if loading fails
-        speech = [DEFAULT_TEXT] * num_items
+        speech = [get_default_text()] * num_items
 
 def get_voices():
     global voices
@@ -409,7 +446,8 @@ def save_speech():
         filepath = get_speech_path()
 
         with open(filepath, "w") as file:
-            file.write("\n".join(speech).strip())
+            # Don't strip the joined string to preserve empty lines
+            file.write("\n".join(speech))
     except Exception as e:
         print(f"Error saving speech: {e}")
         messagebox.showerror("Error", f"Failed to save speech: {e}")
@@ -439,8 +477,8 @@ def reset_inputs():
     # Reset all entry fields
     for i, entry in enumerate(input_entries):
         entry.delete(0, tk.END)
-        entry.insert(0, DEFAULT_TEXT)
-        speech[i] = DEFAULT_TEXT
+        entry.insert(0, get_default_text())
+        speech[i] = get_default_text()
 
     # Reset voice to first available voice
     if voices:
@@ -466,15 +504,42 @@ def signal_handler(sig, frame):
         # If window isn't initialized yet, just exit
         sys.exit(0)
 
+def move_item_up(index):
+    """Move a speech item up in the list (swap with the item above it)"""
+    if index <= 0:
+        return  # Can't move the first item up
+
+    # Swap entries in the speech list
+    speech[index], speech[index-1] = speech[index-1], speech[index]
+
+    # Update the text in the entries
+    input_entries[index].delete(0, tk.END)
+    input_entries[index].insert(0, speech[index])
+
+    input_entries[index-1].delete(0, tk.END)
+    input_entries[index-1].insert(0, speech[index-1])
+
+    # Save the updated order
+    save_speech()
+
+def move_item_down(index):
+    """Move a speech item down in the list (swap with the item below it)"""
+    if index >= len(speech) - 1:
+        return  # Can't move the last item down
+
+    # Swap entries in the speech list
+    speech[index], speech[index+1] = speech[index+1], speech[index]
+
+    # Update the text in the entries
+    input_entries[index].delete(0, tk.END)
+    input_entries[index].insert(0, speech[index])
+
+    input_entries[index+1].delete(0, tk.END)
+    input_entries[index+1].insert(0, speech[index+1])
+
+    # Save the updated order
+    save_speech()
+
+# Call the main function when the script is run directly
 if __name__ == "__main__":
-    # Handle Ctrl+C (SIGINT) to stop speech and exit gracefully
-    def signal_handler(sig, frame):
-        print("Signal received, exiting gracefully...")
-        stop_speech()
-        save_speech()
-        save_settings()
-        sys.exit(0)
-
-    signal.signal(signal.SIGINT, signal_handler)
-
     main()
