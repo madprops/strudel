@@ -10,6 +10,8 @@ But I'll probably just use it for fun myself.
 
 There are no libraries needed, you just need `tk` installed.
 
+It uses `espeak` for speech synthesis.
+
 There are buttons to move items up and down.
 
 The `Save` button must be used to save the state.
