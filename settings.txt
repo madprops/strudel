@@ -1,5 +1,5 @@
 synth=espeak
-voice=pt
+voice=es-la
 speed=1.0
 num_items=50
 default_text=

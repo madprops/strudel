@@ -131,6 +131,7 @@ def make_window():
 
     def show_voice_tooltip(event):
         voice = voice_var.get()
+
         if voice:
             tooltip.config(text=f"Selected: {voice}")
             x = voice_combo.winfo_rootx()
@@ -151,14 +152,15 @@ def make_window():
     speed_label.pack(side="top", pady=(0, 2))
 
     # Available speech speeds with descriptive labels
-    speed_values = ["0.25", "0.5", "0.75", "1.0", "1.25", "1.5", "1.75", "2.0"]
-    speed_labels = ["0.25×", "0.5×", "0.75×", "1.0×", "1.25×", "1.5×", "1.75×", "2.0×"]
+    speed_values = ["2.0", "1.75", "1.5", "1.25", "1.0", "0.75", "0.5", "0.25"]
+    speed_labels = ["2.0×", "1.75×", "1.5×", "1.25×", "1.0×", "0.75×", "0.5×", "0.25×"]
 
     # Create a dictionary to map display labels to actual values
     speed_map = dict(zip(speed_labels, speed_values))
 
     # Get the current speed value and find its corresponding label
     current_speed = get_speed()
+
     current_speed_label = next((label for label, value in speed_map.items()
                             if value == current_speed), "1.0×")  # Default to 1.0× if not found
 
@@ -166,6 +168,7 @@ def make_window():
 
     speed_combo = ttk.Combobox(speed_frame, textvariable=speed_var, values=speed_labels, width=5,
                              font=("sans", 12), style="Strudel.TCombobox")
+
     speed_combo.pack(side="top")
 
     # Remove focus and highlighting when item is selected
@@ -206,9 +209,9 @@ def make_window():
     volume_label = tk.Label(volume_frame, text="Volume:", bg="#2d2d2d", fg="white", font=("sans", 12))
     volume_label.pack(side="top", pady=(0, 2))
 
-    # Available volume levels (0.1 to 1.0) with percentage display
-    volume_values = ["0.1", "0.2", "0.3", "0.4", "0.5", "0.6", "0.7", "0.8", "0.9", "1.0"]
-    volume_labels = ["10%", "20%", "30%", "40%", "50%", "60%", "70%", "80%", "90%", "100%"]
+    # Available volume levels (1.0 to 0.1) with percentage display
+    volume_values = ["1.0", "0.9", "0.8", "0.7", "0.6", "0.5", "0.4", "0.3", "0.2", "0.1"]
+    volume_labels = ["100%", "90%", "80%", "70%", "60%", "50%", "40%", "30%", "20%", "10%"]
 
     # Create a dictionary to map display labels to actual values
     volume_map = dict(zip(volume_labels, volume_values))
@@ -265,6 +268,7 @@ def make_window():
 
     def show_volume_tooltip(event):
         volume_label = volume_var.get()
+
         if volume_label:
             volume_tooltip.config(text=f"Volume: {volume_label}")
             x = volume_combo.winfo_rootx()
@@ -663,6 +667,7 @@ def get_voices():
                     # Parse voices from synth output (skip header line)
                     for line in lines[1:]:
                         parts = line.split()
+
                         if len(parts) > 1:
                             voices.append(parts[3])
             except Exception as e:
@@ -775,14 +780,17 @@ def apply_filter(filter_text):
 
     # Make sure we have all the widgets we need
     num_items = get_num_items()
+
     if len(row_frames) != num_items or len(input_entries) != num_items:
         print(f"Warning: Widget count mismatch. Expected {num_items}, got {len(row_frames)} row frames, "
               f"{len(input_entries)} entries")
+
         return
 
     # If no filter text, show all entries
     if not filter_text:
         filtered_indices = None
+
         # Show all entry rows
         for n in range(num_items):
             # Use grid with the correct row to restore position
