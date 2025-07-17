@@ -15,8 +15,11 @@ window = None
 input_entries = []
 voice_var = None
 speed_var = None  # Variable for speech speed
+volume_var = None  # Variable for speech volume
 current_speech_process = None
 speech_lock = threading.Lock()
+
+PAD_X = 5
 
 def main():
     try:
@@ -45,7 +48,7 @@ def main():
         messagebox.showerror("Error", f"An error occurred: {e}")
 
 def make_window():
-    global window, input_entries, voice_var, speed_var
+    global window, input_entries, voice_var, speed_var, speed_map, volume_var, volume_map
 
     window = tk.Tk()
     window.title(get_title())
@@ -69,9 +72,200 @@ def make_window():
     font = ("sans", 16)
     input_entries = []
 
+    # Create top controls for voice, speed, and volume - centered at the top
+    top_controls = tk.Frame(window, bg="#2d2d2d", height=80)  # Set fixed height to give space for buttons at bottom
+    top_controls.pack(fill="x", pady=(10, 5), padx=10)
+    top_controls.pack_propagate(False)  # Prevent the frame from shrinking to fit its contents
+
+    # Center container for voice, speed, and volume controls
+    controls_container = tk.Frame(top_controls, bg="#2d2d2d")
+    controls_container.pack(side="left", fill="x", expand=True)
+
+    # Apply a style to make the combobox match button height
+    style = ttk.Style()
+    style.configure("Strudel.TCombobox", padding=(0, 4, 0, 4))  # Add padding to match button height
+
+    # Configure the dropdown popup to have larger text and wider arrow
+    style.map("TCombobox", fieldbackground=[("readonly", "#ffffff")])
+    style.configure("TCombobox", arrowsize=20)  # Make the dropdown arrow wider
+
+    # Configure the dropdown popup list style (for Windows and Linux)
+    window.option_add("*TCombobox*Listbox.font", ("sans", 12))
+
+    # Voice selection with label
+    voice_frame = tk.Frame(controls_container, bg="#2d2d2d")
+    voice_frame.pack(side="left", padx=PAD_X)
+
+    voice_label = tk.Label(voice_frame, text="Voice:", bg="#2d2d2d", fg="white", font=("sans", 12))
+    voice_label.pack(side="top", pady=(0, 2))
+
+    voice_var = tk.StringVar(value=get_voice())
+
+    voice_combo = ttk.Combobox(voice_frame, textvariable=voice_var, values=voices, width=8,
+                              font=("sans", 12), style="Strudel.TCombobox")
+
+    voice_combo.pack(side="top")
+
+    # Remove focus and highlighting when item is selected
+    def handle_combobox_select(event):
+        # Use tkinter's scheduler to shift focus after a short delay
+        window.after(1, lambda: (voice_combo.selection_clear(), window.focus_force()))
+
+    voice_combo.bind("<<ComboboxSelected>>", handle_combobox_select)
+
+    # Tooltip for voice
+    tooltip = tk.Label(window, text="", bg="#f0f0f0", fg="#000000", relief="solid", borderwidth=1)
+    tooltip.pack_forget()  # Hide initially
+
+    def show_voice_tooltip(event):
+        voice = voice_var.get()
+        if voice:
+            tooltip.config(text=f"Selected: {voice}")
+            x = voice_combo.winfo_rootx()
+            y = voice_combo.winfo_rooty() + voice_combo.winfo_height()
+            tooltip.place(x=x, y=y)
+
+    def hide_voice_tooltip(event):
+        tooltip.pack_forget()
+
+    voice_combo.bind("<Enter>", show_voice_tooltip)
+    voice_combo.bind("<Leave>", hide_voice_tooltip)
+
+    # Speed selection with label
+    speed_frame = tk.Frame(controls_container, bg="#2d2d2d")
+    speed_frame.pack(side="left", padx=PAD_X)
+
+    speed_label = tk.Label(speed_frame, text="Speed:", bg="#2d2d2d", fg="white", font=("sans", 12))
+    speed_label.pack(side="top", pady=(0, 2))
+
+    # Available speech speeds with descriptive labels
+    speed_values = ["0.25", "0.5", "0.75", "1.0", "1.25", "1.5", "1.75", "2.0"]
+    speed_labels = ["0.25×", "0.5×", "0.75×", "1.0×", "1.25×", "1.5×", "1.75×", "2.0×"]
+
+    # Create a dictionary to map display labels to actual values
+    speed_map = dict(zip(speed_labels, speed_values))
+
+    # Get the current speed value and find its corresponding label
+    current_speed = get_speed()
+    current_speed_label = next((label for label, value in speed_map.items()
+                            if value == current_speed), "1.0×")  # Default to 1.0× if not found
+
+    speed_var = tk.StringVar(value=current_speed_label)
+
+    speed_combo = ttk.Combobox(speed_frame, textvariable=speed_var, values=speed_labels, width=5,
+                             font=("sans", 12), style="Strudel.TCombobox")
+    speed_combo.pack(side="top")
+
+    # Remove focus and highlighting when item is selected
+    def handle_speed_select(event):
+        # Use tkinter's scheduler to shift focus after a short delay
+        window.after(10, lambda: (speed_combo.selection_clear(), window.focus_force()))
+        # Get the selected display label and convert to actual value
+        selected_label = speed_var.get()
+        actual_value = speed_map.get(selected_label, "1.0")  # Default to 1.0 if not found
+        # Update settings when speed changes
+        settings["speed"] = actual_value
+
+    speed_combo.bind("<<ComboboxSelected>>", handle_speed_select)
+
+    # Tooltip for speed
+    speed_tooltip = tk.Label(window, text="", bg="#f0f0f0", fg="#000000", relief="solid", borderwidth=1)
+    speed_tooltip.pack_forget()  # Hide initially
+
+    def show_speed_tooltip(event):
+        speed_label = speed_var.get()
+        if speed_label:
+            speed_tooltip.config(text=f"Speed: {speed_label}")
+            x = speed_combo.winfo_rootx()
+            y = speed_combo.winfo_rooty() + speed_combo.winfo_height()
+            speed_tooltip.place(x=x, y=y)
+
+    def hide_speed_tooltip(event):
+        speed_tooltip.pack_forget()
+
+    speed_combo.bind("<Enter>", show_speed_tooltip)
+    speed_combo.bind("<Leave>", hide_speed_tooltip)
+
+    # Volume selection with label
+    volume_frame = tk.Frame(controls_container, bg="#2d2d2d")
+    volume_frame.pack(side="left", padx=PAD_X)
+
+    volume_label = tk.Label(volume_frame, text="Volume:", bg="#2d2d2d", fg="white", font=("sans", 12))
+    volume_label.pack(side="top", pady=(0, 2))
+
+    # Available volume levels (0.1 to 1.0) with percentage display
+    volume_values = ["0.1", "0.2", "0.3", "0.4", "0.5", "0.6", "0.7", "0.8", "0.9", "1.0"]
+    volume_labels = ["10%", "20%", "30%", "40%", "50%", "60%", "70%", "80%", "90%", "100%"]
+
+    # Create a dictionary to map display labels to actual values
+    volume_map = dict(zip(volume_labels, volume_values))
+
+    # Get the current volume value and find its corresponding label
+    current_volume = get_volume()
+    current_volume_label = next((label for label, value in volume_map.items()
+                             if value == current_volume), "100%")  # Default to 100% if not found
+
+    volume_var = tk.StringVar(value=current_volume_label)
+
+    volume_combo = ttk.Combobox(volume_frame, textvariable=volume_var, values=volume_labels, width=5,
+                              font=("sans", 12), style="Strudel.TCombobox")
+
+    volume_combo.pack(side="top")
+
+    # Bottom controls - positioned at the right side and vertically aligned to the bottom
+    buttons = tk.Frame(top_controls, bg="#2d2d2d")
+    buttons.pack(side="right", fill="y", anchor="s")
+
+    # Button height to match combobox
+    button_height = 1
+
+    # Save button
+    save_btn = tk.Button(buttons, text="Save", font=("sans", 11), height=button_height,
+                        command=lambda: (save_speech(), save_settings()))
+
+    save_btn.pack(side="right", padx=PAD_X, anchor="s", pady=(0, 5))
+
+    # Reset button
+    reset_btn = tk.Button(buttons, text="Reset", font=("sans", 11), height=button_height, command=reset_inputs)
+    reset_btn.pack(side="right", padx=PAD_X, anchor="s", pady=(0, 5))
+
+    # Close button
+    close_btn = tk.Button(buttons, text="Close", font=("sans", 11), height=button_height, command=on_closing)
+    close_btn.pack(side="right", padx=PAD_X, anchor="s", pady=(0, 5))
+
+    # Remove focus and highlighting when item is selected
+    def handle_volume_select(event):
+        # Use tkinter's scheduler to shift focus after a short delay
+        window.after(10, lambda: (volume_combo.selection_clear(), window.focus_force()))
+        # Get the selected display label and convert to actual value
+        selected_label = volume_var.get()
+        actual_value = volume_map.get(selected_label, "1.0")  # Default to 1.0 if not found
+        # Update settings when volume changes
+        settings["volume"] = actual_value
+
+    volume_combo.bind("<<ComboboxSelected>>", handle_volume_select)
+
+    # Tooltip for volume
+    volume_tooltip = tk.Label(window, text="", bg="#f0f0f0", fg="#000000", relief="solid", borderwidth=1)
+    volume_tooltip.pack_forget()  # Hide initially
+
+    def show_volume_tooltip(event):
+        volume_label = volume_var.get()
+        if volume_label:
+            volume_tooltip.config(text=f"Volume: {volume_label}")
+            x = volume_combo.winfo_rootx()
+            y = volume_combo.winfo_rooty() + volume_combo.winfo_height()
+            volume_tooltip.place(x=x, y=y)
+
+    def hide_volume_tooltip(event):
+        volume_tooltip.pack_forget()
+
+    volume_combo.bind("<Enter>", show_volume_tooltip)
+    volume_combo.bind("<Leave>", hide_volume_tooltip)
+
     # Create main container with scrolling ability
     main_container = tk.Frame(window, bg="#2d2d2d")
-    main_container.pack(fill="both", expand=True, padx=10, pady=10)
+    main_container.pack(fill="both", expand=True, padx=10, pady=5)
 
     # Create canvas with scrollbar for scrolling through items
     canvas = tk.Canvas(main_container, bg="#2d2d2d", highlightthickness=0)
@@ -162,116 +356,6 @@ def make_window():
     # Make the entry columns expand
     frame.grid_columnconfigure(1, weight=1)
 
-    # Bottom controls
-    bottom = tk.Frame(window, bg="#2d2d2d")
-    bottom.pack(fill="x", pady=(10, 10), padx=10)
-
-    # Voice selection with label
-    voice_label = tk.Label(bottom, text="Voice:", bg="#2d2d2d", fg="white", font=("sans", 12))
-    voice_label.pack(side="left", padx=(0, 5))
-
-    voice_var = tk.StringVar(value=get_voice())
-
-    # Apply a style to make the combobox match button height
-    style = ttk.Style()
-    style.configure("Strudel.TCombobox", padding=(0, 4, 0, 4))  # Add padding to match button height
-
-    # Configure the dropdown popup to have larger text and wider arrow
-    style.map("TCombobox", fieldbackground=[("readonly", "#ffffff")])
-    style.configure("TCombobox", arrowsize=20)  # Make the dropdown arrow wider
-
-    # Configure the dropdown popup list style (for Windows and Linux)
-    window.option_add("*TCombobox*Listbox.font", ("sans", 12))
-
-    voice_combo = ttk.Combobox(bottom, textvariable=voice_var, values=voices, width=8,
-                               font=("sans", 12), style="Strudel.TCombobox")
-
-    voice_combo.pack(side="left", padx=(0, 10))
-
-    # Remove focus and highlighting when item is selected
-    def handle_combobox_select(event):
-        # Use tkinter's scheduler to shift focus after a short delay
-        window.after(1, lambda: (voice_combo.selection_clear(), window.focus_force()))
-
-    voice_combo.bind("<<ComboboxSelected>>", handle_combobox_select)
-
-    # Tooltip for voice
-    tooltip = tk.Label(window, text="", bg="#f0f0f0", fg="#000000", relief="solid", borderwidth=1)
-    tooltip.pack_forget()  # Hide initially
-
-    def show_voice_tooltip(event):
-        voice = voice_var.get()
-
-        if voice:
-            tooltip.config(text=f"Selected: {voice}")
-            x = voice_combo.winfo_rootx()
-            y = voice_combo.winfo_rooty() + voice_combo.winfo_height()
-            tooltip.place(x=x, y=y)
-
-    def hide_voice_tooltip(event):
-        tooltip.pack_forget()
-
-    voice_combo.bind("<Enter>", show_voice_tooltip)
-    voice_combo.bind("<Leave>", hide_voice_tooltip)
-
-    # Speed selection with label
-    speed_label = tk.Label(bottom, text="Speed:", bg="#2d2d2d", fg="white", font=("sans", 12))
-    speed_label.pack(side="left", padx=(10, 5))
-
-    # Available speech speeds
-    speeds = ["0.25", "0.5", "0.75", "1.0", "1.25", "1.5", "1.75", "2.0"]
-    speed_var = tk.StringVar(value=get_speed())
-
-    speed_combo = ttk.Combobox(bottom, textvariable=speed_var, values=speeds, width=5,
-                              font=("sans", 12), style="Strudel.TCombobox")
-
-    speed_combo.pack(side="left", padx=(0, 10))
-
-    # Remove focus and highlighting when item is selected
-    def handle_speed_select(event):
-        # Use tkinter's scheduler to shift focus after a short delay
-        window.after(10, lambda: (speed_combo.selection_clear(), window.focus_force()))
-        # Update settings when speed changes
-        settings["speed"] = speed_var.get()
-
-    speed_combo.bind("<<ComboboxSelected>>", handle_speed_select)
-
-    # Tooltip for speed
-    speed_tooltip = tk.Label(window, text="", bg="#f0f0f0", fg="#000000", relief="solid", borderwidth=1)
-    speed_tooltip.pack_forget()  # Hide initially
-
-    def show_speed_tooltip(event):
-        speed = speed_var.get()
-
-        if speed:
-            speed_tooltip.config(text=f"Speed: {speed}x")
-            x = speed_combo.winfo_rootx()
-            y = speed_combo.winfo_rooty() + speed_combo.winfo_height()
-            speed_tooltip.place(x=x, y=y)
-
-    def hide_speed_tooltip(event):
-        speed_tooltip.pack_forget()
-
-    speed_combo.bind("<Enter>", show_speed_tooltip)
-    speed_combo.bind("<Leave>", hide_speed_tooltip)
-
-    # Button height to match combobox
-    button_height = 1
-
-    # Save button
-    save_btn = tk.Button(bottom, text="Save", font=("sans", 11), height=button_height,
-                        command=lambda: (save_speech(), save_settings()))
-
-    save_btn.pack(side="right", padx=5)
-
-    # Reset button
-    reset_btn = tk.Button(bottom, text="Reset", font=("sans", 11), height=button_height, command=reset_inputs)
-    reset_btn.pack(side="right", padx=5)
-
-    # Close button
-    close_btn = tk.Button(bottom, text="Close", font=("sans", 11), height=button_height, command=on_closing)
-    close_btn.pack(side="right", padx=5)
-
     # Handle window close event
     window.protocol("WM_DELETE_WINDOW", on_closing)
 
@@ -290,8 +374,14 @@ def speak_callback(n):
       return
 
     v = voice_var.get()
-    # Update speed setting to current selection
-    settings["speed"] = speed_var.get()
+    # Update speed setting to current selection - convert from label to value
+    selected_speed_label = speed_var.get()
+    settings["speed"] = speed_map.get(selected_speed_label, "1.0")
+
+    # Update volume setting to current selection - convert from label to value
+    selected_volume_label = volume_var.get()
+    settings["volume"] = volume_map.get(selected_volume_label, "1.0")
+
     speak(n, s, v)
 
 def stop_speech():
@@ -319,6 +409,9 @@ def speak_thread(n, s, v):
     try:
         # Get current speed setting
         speed = get_speed()
+        # Get current volume setting
+        volume = get_volume()
+
         # Convert speed to words per minute for synth (-s option)
         # Default synth speed is 175 words per minute
         base_wpm = 175
@@ -330,8 +423,17 @@ def speak_thread(n, s, v):
             # Default to normal speed if conversion fails
             wpm = base_wpm
 
+        # Convert volume to amplitude percentage for synth (-a option)
+        # Default is 100, our UI shows 0.1 to 1.0
+        try:
+            volume_float = float(volume)
+            amplitude = int(volume_float * 100)  # Convert to percentage (0-100)
+        except (ValueError, TypeError):
+            # Default to full volume if conversion fails
+            amplitude = 100
+
         with speech_lock:
-            current_speech_process = Popen([get_synth(), "-v", v, "-s", str(wpm), s], stderr=PIPE)
+            current_speech_process = Popen([get_synth(), "-v", v, "-s", str(wpm), "-a", str(amplitude), s], stderr=PIPE)
 
         # Wait for the process outside the lock to allow other threads to interrupt
         _, error = current_speech_process.communicate()
@@ -414,6 +516,9 @@ def get_voice():
 
 def get_speed():
   return settings.get("speed", "1.0")
+
+def get_volume():
+  return settings.get("volume", "1.0")
 
 def get_synth():
   return settings.get("synth", "espeak")
@@ -546,8 +651,13 @@ def reset_inputs():
 
     # Reset speed to default if it exists
     if "speed" in settings:
-        speed_var.set("1.0")
+        speed_var.set("1.0×")  # Set to the label for default speed
         settings["speed"] = "1.0"
+
+    # Reset volume to default
+    if "volume" in settings:
+        volume_var.set("100%")  # Set to the label for default volume
+        settings["volume"] = "1.0"
 
     # Save changes
     save_speech()
