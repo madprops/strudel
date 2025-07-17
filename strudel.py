@@ -23,6 +23,7 @@ filtered_indices = None  # Track which entries are currently filtered (shown)
 frame = None  # The frame containing the input entries
 filter_var = None  # Variable for filter input
 filter_entry = None  # The filter entry widget
+canvas = None
 
 PAD_X = 5
 BUTTON_SIZE = 10
@@ -56,7 +57,7 @@ def main():
         messagebox.showerror("Error", f"An error occurred: {e}")
 
 def make_window():
-    global window, input_entries, voice_var, speed_var, speed_map, volume_var, volume_map, filtered_indices, frame, filter_var, filter_entry, row_frames
+    global window, input_entries, voice_var, speed_var, speed_map, volume_var, volume_map, filtered_indices, frame, filter_var, filter_entry, row_frames, canvas
 
     window = tk.Tk()
     window.title(get_title())
@@ -767,6 +768,8 @@ def apply_filter(filter_text):
     """Filter the speech entries based on the given text"""
     global filtered_indices
 
+    scroll_to_top()
+
     # Ensure we have a clean starting point
     filter_text = filter_text.strip()
 
@@ -882,9 +885,7 @@ def start_keyboard_detection():
 
 def handle_keyboard_shortcuts(event):
     """Handle keyboard shortcuts for playing speech entries.
-
     Enter key: Play the first non-empty entry
-    Ctrl+1 to Ctrl+0: Play entries 1-10 (0 corresponds to 10th entry)
     """
     # Handle Enter key to play first non-empty input
     if event.keysym == "Return":
@@ -892,29 +893,18 @@ def handle_keyboard_shortcuts(event):
         focused_entry = get_focused_entry()
 
         if focused_entry:
-          speak_callback(None, focused_entry)
+            speak_callback(None, focused_entry)
         else:
-          # Find the first non-empty entry
-          for i, entry in enumerate(input_entries):
-              if entry.get().strip():
-                  speak_callback(i)
-                  break
-        return
+            # Find the first non-empty entry
+            for i, entry in enumerate(input_entries):
 
-    # Handle Ctrl+1 through Ctrl+0 for playing specific entries
-    if event.state & 0x4:  # Check for Ctrl key (0x4 is the mask for Ctrl)
-        try:
-            if event.char.isdigit():
-                index = int(event.char) - 1  # Convert 1-0 to 0-9 index
-                if event.char == "0":
-                    index = 9  # Make 0 correspond to the 10th entry
+                if filtered_indices:
+                    if i not in filtered_indices:
+                        continue
 
-                # Check if the index is valid
-                if 0 <= index < len(input_entries):
-                    speak_callback(index)
-        except (ValueError, AttributeError):
-            # Ignore errors if the key pressed with Ctrl isn't a digit
-            pass
+                if entry.get().strip():
+                    speak_callback(i)
+                    break
 
 def get_focused_entry():
     """Return the currently focused input entry widget, or None if none focused or if focus is elsewhere.
@@ -935,6 +925,12 @@ def get_focused_entry():
 
     # Return None if focus is on another widget (like filter_entry)
     return None
+
+def scroll_to_top():
+    """Scroll the canvas to the top position."""
+    # Make sure the canvas exists before trying to scroll
+    if "canvas" in globals():
+        canvas.yview_moveto(0.0)  # Move view to the beginning (0.0 = top)
 
 
 # Call the main function when the script is run directly
