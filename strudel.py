@@ -13,13 +13,19 @@ speech = []
 voices = []
 window = None
 input_entries = []
+row_frames = []     # Store references to row frames containing all elements
 voice_var = None
 speed_var = None  # Variable for speech speed
 volume_var = None  # Variable for speech volume
 current_speech_process = None
 speech_lock = threading.Lock()
+filtered_indices = None  # Track which entries are currently filtered (shown)
+frame = None  # The frame containing the input entries
+filter_var = None  # Variable for filter input
+filter_entry = None  # The filter entry widget
 
 PAD_X = 5
+BUTTON_SIZE = 10
 
 def main():
     try:
@@ -38,9 +44,11 @@ def main():
         get_speech()
         get_voices()
         make_window()
+        start_keyboard_detection()
 
         # Start the signal checking loop once window is created
         window.after(100, check_signals)
+        window.after(100, focus_filter())
 
         window.mainloop()
     except Exception as e:
@@ -48,12 +56,15 @@ def main():
         messagebox.showerror("Error", f"An error occurred: {e}")
 
 def make_window():
-    global window, input_entries, voice_var, speed_var, speed_map, volume_var, volume_map
+    global window, input_entries, voice_var, speed_var, speed_map, volume_var, volume_map, filtered_indices, frame, filter_var, filter_entry, row_frames
 
     window = tk.Tk()
     window.title(get_title())
     window.configure(bg=get_background())
     window.geometry(f"{get_width()}x{get_height()}")  # Set initial size
+
+    # Initialize filtered_indices as None (no filtering)
+    filtered_indices = None
 
     # Set application icon
     try:
@@ -73,8 +84,8 @@ def make_window():
     input_entries = []
 
     # Create top controls for voice, speed, and volume - centered at the top
-    top_controls = tk.Frame(window, bg="#2d2d2d", height=80)  # Set fixed height to give space for buttons at bottom
-    top_controls.pack(fill="x", pady=(10, 5), padx=10)
+    top_controls = tk.Frame(window, bg="#2d2d2d", height=60)  # Set fixed height to give space for buttons at bottom
+    top_controls.pack(fill="x", pady=(10, 5), padx=(5, 5))
     top_controls.pack_propagate(False)  # Prevent the frame from shrinking to fit its contents
 
     # Center container for voice, speed, and volume controls
@@ -174,6 +185,7 @@ def make_window():
 
     def show_speed_tooltip(event):
         speed_label = speed_var.get()
+
         if speed_label:
             speed_tooltip.config(text=f"Speed: {speed_label}")
             x = speed_combo.winfo_rootx()
@@ -202,6 +214,7 @@ def make_window():
 
     # Get the current volume value and find its corresponding label
     current_volume = get_volume()
+
     current_volume_label = next((label for label, value in volume_map.items()
                              if value == current_volume), "100%")  # Default to 100% if not found
 
@@ -220,17 +233,17 @@ def make_window():
     button_height = 1
 
     # Save button
-    save_btn = tk.Button(buttons, text="Save", font=("sans", 11), height=button_height,
+    save_btn = tk.Button(buttons, text="Save", font=("sans", BUTTON_SIZE), height=button_height,
                         command=lambda: (save_speech(), save_settings()))
 
     save_btn.pack(side="right", padx=PAD_X, anchor="s", pady=(0, 5))
 
     # Reset button
-    reset_btn = tk.Button(buttons, text="Reset", font=("sans", 11), height=button_height, command=reset_inputs)
+    reset_btn = tk.Button(buttons, text="Reset", font=("sans", BUTTON_SIZE), height=button_height, command=reset_inputs)
     reset_btn.pack(side="right", padx=PAD_X, anchor="s", pady=(0, 5))
 
     # Close button
-    close_btn = tk.Button(buttons, text="Close", font=("sans", 11), height=button_height, command=on_closing)
+    close_btn = tk.Button(buttons, text="Close", font=("sans", BUTTON_SIZE), height=button_height, command=on_closing)
     close_btn.pack(side="right", padx=PAD_X, anchor="s", pady=(0, 5))
 
     # Remove focus and highlighting when item is selected
@@ -263,6 +276,8 @@ def make_window():
     volume_combo.bind("<Enter>", show_volume_tooltip)
     volume_combo.bind("<Leave>", hide_volume_tooltip)
 
+    # Filter functionality is now implemented at the top of the window
+
     # Create main container with scrolling ability
     main_container = tk.Frame(window, bg="#2d2d2d")
     main_container.pack(fill="both", expand=True, padx=10, pady=5)
@@ -271,6 +286,8 @@ def make_window():
     canvas = tk.Canvas(main_container, bg="#2d2d2d", highlightthickness=0)
     scrollbar = ttk.Scrollbar(main_container, orient="vertical", command=canvas.yview)
 
+    # Use the global frame variable
+    global frame
     frame = tk.Frame(canvas, bg="#2d2d2d")
 
     # Configure scrolling
@@ -296,7 +313,7 @@ def make_window():
             widget = window.winfo_containing(event.x_root, event.y_root)
             if isinstance(widget, ttk.Combobox) or "TCombobox" in str(widget):
                 return  # Don't scroll the canvas if over a combobox
-            canvas.yview_scroll(int(-1*(event.delta/120)), "units")
+            canvas.yview_scroll(int(-1 * (event.delta / 120)), "units")
         except KeyError:
             # Skip scrolling when dropdown is active
             pass
@@ -331,30 +348,77 @@ def make_window():
     canvas.bind_all("<Button-4>", _on_scroll_up)  # Linux
     canvas.bind_all("<Button-5>", _on_scroll_down)   # Linux
 
-    # Create speech input rows using grid layout
-    for n in range(get_num_items()):
-        btn = tk.Button(frame, text="Speak", font=("sans", 11), height=1, width=6, command=lambda n=n: speak_callback(n))
-        btn.grid(row=n, column=0, padx=5, pady=2, sticky="nsw")
+    # Clear any previous references
+    row_frames = []
+    input_entries = []
 
-        entry = tk.Entry(frame, width=50, font=("sans", 14))
+    for n in range(get_num_items()):
+        # Create a frame for this row
+        row_frame = tk.Frame(frame, bg="#2d2d2d")
+        row_frame.grid(row=n, column=0, sticky="ew", padx=0, pady=1)
+        row_frames.append(row_frame)
+
+        # Add the speak button
+        btn = tk.Button(row_frame, text="Speak", font=("sans", 10), height=1, width=6,
+                      command=lambda n=n: speak_callback(n))
+
+        btn.pack(side="left", padx=(0, 5), pady=2)
+
+        # Add the entry
+        entry = tk.Entry(row_frame, width=50, font=("sans", 14))
         entry.insert(0, speech[n])
-        entry.grid(row=n, column=1, padx=5, pady=2, sticky="ew")
+        entry.pack(side="left", padx=5, pady=2, fill="x", expand=True)
         input_entries.append(entry)
 
+        # Button container for up/down buttons
+        button_container = tk.Frame(row_frame, bg="#2d2d2d")
+        button_container.pack(side="right", padx=5)
+
         # Up button
-        up_btn = tk.Button(frame, text="▲", font=("sans", 11), height=1, width=2,
+        up_btn = tk.Button(button_container, text="▲", font=("sans", 11), height=1, width=2,
                           command=lambda n=n: move_item_up(n))
 
-        up_btn.grid(row=n, column=2, padx=(2, 0), pady=2, sticky="ns")
+        up_btn.pack(side="left", padx=(2, 0))
 
         # Down button
-        down_btn = tk.Button(frame, text="▼", font=("sans", 11), height=1, width=2,
+        down_btn = tk.Button(button_container, text="▼", font=("sans", 11), height=1, width=2,
                             command=lambda n=n: move_item_down(n))
 
-        down_btn.grid(row=n, column=3, padx=(0, 5), pady=2, sticky="ns")
+        down_btn.pack(side="left", padx=(0, 5))
 
-    # Make the entry columns expand
-    frame.grid_columnconfigure(1, weight=1)
+    # Make the row frames expand horizontally
+    frame.grid_columnconfigure(0, weight=1)
+
+    # --- BOTTOM ---
+
+    bottom_controls = tk.Frame(window, bg="#2d2d2d", height=50)  # Set fixed height to give space for buttons at bottom
+    bottom_controls.pack(fill="x", pady=(0, 0), padx=0)
+    bottom_controls.pack_propagate(False)  #
+    # Add filter input above the speech entries
+    filter_frame = tk.Frame(bottom_controls, bg="#2d2d2d")
+    filter_frame.pack(fill="x", pady=(0, 5), padx=10)
+
+    filter_var = tk.StringVar()
+    filter_entry = tk.Entry(filter_frame, textvariable=filter_var, width=30, font=("sans", 14))
+    filter_entry.pack(side="left", fill="x", expand=True, pady=(5, 5))
+
+    # Bind Escape key to clear the filter
+    filter_entry.bind("<Escape>", lambda e: clear_filter())    # Clear button for the filter
+
+    # Use the global clear_filter function
+    clear_filter_btn = tk.Button(filter_frame, text="Clear", font=("sans", BUTTON_SIZE),
+                              command=clear_filter)
+
+    clear_filter_btn.pack(side="right", padx=(5, 0), pady=(5, 5))
+
+    # Bind the filter entry to update filtering on text change
+    def on_filter_change(*args):
+        # Get the current filter text
+        current_filter = filter_var.get()
+        apply_filter(current_filter)
+
+    # Use both write and read traces to ensure it catches all changes
+    filter_var.trace_add("write", on_filter_change)
 
     # Handle window close event
     window.protocol("WM_DELETE_WINDOW", on_closing)
@@ -362,13 +426,22 @@ def make_window():
 def on_closing():
     """Handle the window closing event"""
     stop_speech()
+
+    # Make sure all entries are visible before saving
+    if filtered_indices is not None:
+        filter_var.set("")
+        apply_filter("")  # This will restore all items in their proper grid positions
+
     save_speech()
     save_settings()
     window.destroy()
     sys.exit(0)
 
-def speak_callback(n):
-    s = input_entries[n].get().strip()
+def speak_callback(n, entry=None):
+    if not entry:
+      entry = input_entries[n]
+
+    s = entry.get().strip()
 
     if not s:
       return
@@ -659,6 +732,9 @@ def reset_inputs():
         volume_var.set("100%")  # Set to the label for default volume
         settings["volume"] = "1.0"
 
+    # Clear any active filter
+    clear_filter()
+
     # Save changes
     save_speech()
     save_settings()
@@ -676,6 +752,63 @@ def signal_handler(sig, frame):
     # Don't try to interact with the window - it might be causing the hang
     # Force immediate exit with os._exit which doesn't run cleanup handlers
     os._exit(0)
+
+def clear_filter():
+    """Clear the filter and show all entries"""
+    if filter_var:
+        filter_var.set("")
+        apply_filter("")
+
+        # Try to focus the filter entry if it exists
+        if "filter_entry" in globals():
+            filter_entry.focus_set()
+
+def apply_filter(filter_text):
+    """Filter the speech entries based on the given text"""
+    global filtered_indices
+
+    # Ensure we have a clean starting point
+    filter_text = filter_text.strip()
+
+    # Make sure we have all the widgets we need
+    num_items = get_num_items()
+    if len(row_frames) != num_items or len(input_entries) != num_items:
+        print(f"Warning: Widget count mismatch. Expected {num_items}, got {len(row_frames)} row frames, "
+              f"{len(input_entries)} entries")
+        return
+
+    # If no filter text, show all entries
+    if not filter_text:
+        filtered_indices = None
+        # Show all entry rows
+        for n in range(num_items):
+            # Use grid with the correct row to restore position
+            row_frames[n].grid(row=n, column=0, sticky="ew", padx=0, pady=1)
+
+        return
+
+    # Convert filter to lowercase for case-insensitive comparison
+    filter_text = filter_text.lower()
+
+    # Create a list to store indices of entries that match the filter
+    filtered_indices = []
+
+    # Counter for visible rows to ensure compact display
+    visible_row = 0
+
+    # Check each entry against the filter
+    for n in range(num_items):
+        if n < len(input_entries):
+            entry_text = input_entries[n].get().lower()
+
+            if filter_text in entry_text:
+                filtered_indices.append(n)
+                # Show this entry row and reposition it to be compact
+                row_frames[n].grid(row=visible_row, column=0, sticky="ew", padx=0, pady=1)
+                visible_row += 1
+            else:
+                # Completely remove this entry from the grid
+                row_frames[n].grid_forget()
 
 def move_item_up(index):
     save_speech()
@@ -697,6 +830,14 @@ def move_item_up(index):
     # Save the updated order
     save_speech()
 
+    # Re-apply filter if there is active filtering
+    if filtered_indices is not None:
+        # Re-apply the current filter
+        filter_text = filter_var.get()
+
+        if filter_text:
+            apply_filter(filter_text)
+
 def move_item_down(index):
     save_speech()
 
@@ -716,6 +857,85 @@ def move_item_down(index):
 
     # Save the updated order
     save_speech()
+
+    # Re-apply filter if there is active filtering
+    if filtered_indices is not None:
+        # Re-apply the current filter
+        filter_text = filter_var.get()
+
+        if filter_text:
+            apply_filter(filter_text)
+
+def focus_filter():
+    """Focus the filter entry."""
+    if "filter_entry" in globals():
+        filter_entry.focus_set()
+
+def start_keyboard_detection():
+    """Register keyboard event bindings to the window for shortcuts.
+
+    This function sets up event bindings for:
+    - Enter key to play the first non-empty entry
+    - Ctrl+1 through Ctrl+0 to play entries 1-10
+    """
+    window.bind("<Key>", handle_keyboard_shortcuts)
+
+def handle_keyboard_shortcuts(event):
+    """Handle keyboard shortcuts for playing speech entries.
+
+    Enter key: Play the first non-empty entry
+    Ctrl+1 to Ctrl+0: Play entries 1-10 (0 corresponds to 10th entry)
+    """
+    # Handle Enter key to play first non-empty input
+    if event.keysym == "Return":
+        # Get focused entry
+        focused_entry = get_focused_entry()
+
+        if focused_entry:
+          speak_callback(None, focused_entry)
+        else:
+          # Find the first non-empty entry
+          for i, entry in enumerate(input_entries):
+              if entry.get().strip():
+                  speak_callback(i)
+                  break
+        return
+
+    # Handle Ctrl+1 through Ctrl+0 for playing specific entries
+    if event.state & 0x4:  # Check for Ctrl key (0x4 is the mask for Ctrl)
+        try:
+            if event.char.isdigit():
+                index = int(event.char) - 1  # Convert 1-0 to 0-9 index
+                if event.char == "0":
+                    index = 9  # Make 0 correspond to the 10th entry
+
+                # Check if the index is valid
+                if 0 <= index < len(input_entries):
+                    speak_callback(index)
+        except (ValueError, AttributeError):
+            # Ignore errors if the key pressed with Ctrl isn't a digit
+            pass
+
+def get_focused_entry():
+    """Return the currently focused input entry widget, or None if none focused or if focus is elsewhere.
+
+    Returns:
+        The input entry widget that currently has focus, or None if no input entry is focused.
+    """
+    focused = window.focus_get()  # Get the currently focused widget
+
+    # Return None if no widget is focused
+    if not focused:
+        return None
+
+    # Check if the focused widget is one of our input entries
+    if focused in input_entries:
+        # Return the focused entry
+        return focused
+
+    # Return None if focus is on another widget (like filter_entry)
+    return None
+
 
 # Call the main function when the script is run directly
 if __name__ == "__main__":

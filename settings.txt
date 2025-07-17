@@ -7,3 +7,4 @@ width=660
 height=700
 background=#2d2d2d
 title=Strudel
+volume=1.0
