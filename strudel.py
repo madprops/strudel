@@ -54,11 +54,11 @@ def make_window():
 
     # Set application icon
     try:
-        icon_path = os.path.join(os.path.dirname(__file__), "icon.png")
+        icon_path = os.path.join(os.path.dirname(__file__), "strudel.png")
 
         if not os.path.exists(icon_path):
             # Fall back to jpg if png doesn't exist
-            icon_path = os.path.join(os.path.dirname(__file__), "icon.jpg")
+            icon_path = os.path.join(os.path.dirname(__file__), "strudel.jpg")
 
         if os.path.exists(icon_path):
             icon = tk.PhotoImage(file=icon_path)
