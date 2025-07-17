@@ -48,9 +48,9 @@ def make_window():
     global window, input_entries, voice_var, speed_var
 
     window = tk.Tk()
-    window.title("Strudel")
-    window.configure(bg="#2d2d2d")
-    window.geometry("660x700")
+    window.title(get_title())
+    window.configure(bg=get_background())
+    window.geometry(f"{get_width()}x{get_height()}")  # Set initial size
 
     # Set application icon
     try:
@@ -417,6 +417,18 @@ def get_speed():
 
 def get_synth():
   return settings.get("synth", "espeak")
+
+def get_width():
+  return settings.get("width", 660)
+
+def get_height():
+  return settings.get("height", 700)
+
+def get_background():
+  return settings.get("background", "#2d2d2d")
+
+def get_title():
+  return settings.get("title", "Strudel")
 
 def get_num_items():
   # Convert num_items to int, with 50 as default

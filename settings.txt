@@ -3,3 +3,7 @@ voice=pt
 speed=1.5
 num_items=50
 default_text=
+width=660
+height=700
+background=#2d2d2d
+title=Strudel
