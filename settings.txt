@@ -1,1 +1,2 @@
-voice=en-us
+voice=es
+speed=1.25
