@@ -304,8 +304,8 @@ def speak_thread(n, s, v):
     try:
         # Get current speed setting
         speed = get_speed()
-        # Convert speed to words per minute for espeak (-s option)
-        # Default espeak speed is 175 words per minute
+        # Convert speed to words per minute for synth (-s option)
+        # Default synth speed is 175 words per minute
         base_wpm = 175
 
         try:
@@ -316,7 +316,7 @@ def speak_thread(n, s, v):
             wpm = base_wpm
 
         with speech_lock:
-            current_speech_process = Popen(["espeak", "-v", v, "-s", str(wpm), s], stderr=PIPE)
+            current_speech_process = Popen([get_synth(), "-v", v, "-s", str(wpm), s], stderr=PIPE)
 
         # Wait for the process outside the lock to allow other threads to interrupt
         _, error = current_speech_process.communicate()
@@ -324,7 +324,7 @@ def speak_thread(n, s, v):
         with speech_lock:
             if current_speech_process.returncode != 0 and error:
                 error_msg = error.decode().strip()
-                print(f"espeak error: {error_msg}")
+                print(f"Synth error: {error_msg}")
                 # Use after() to schedule the messagebox from the main thread
                 window.after(0, lambda: messagebox.showerror("Speech Error", f"Failed to speak: {error_msg}"))
                 return
@@ -339,9 +339,9 @@ def speak_thread(n, s, v):
                 window.after(0, save_settings)
 
     except Exception as e:
-        print(f"Error running espeak: {e}")
+        print(f"Error running synth: {e}")
         # Use after() to schedule the messagebox from the main thread
-        window.after(0, lambda: messagebox.showerror("Error", f"Failed to run espeak: {e}"))
+        window.after(0, lambda: messagebox.showerror("Error", f"Failed to run synth: {e}"))
 
 def speak(n, s, v):
     """Start speech in a separate thread, stopping any current speech first"""
@@ -400,6 +400,9 @@ def get_voice():
 def get_speed():
   return settings.get("speed", "1.0")
 
+def get_synth():
+  return settings.get("synth", "espeak")
+
 def get_num_items():
   # Convert num_items to int, with 50 as default
   try:
@@ -442,22 +445,22 @@ def get_voices():
             voices = list(map(str.strip, voices))
             voices = list(filter(None, voices))
 
-        # If no voices in file, try getting from espeak
+        # If no voices in file, try getting from synth
         if not voices:
             try:
-                process = Popen(["espeak", "--voices=en"], stdout=PIPE)
+                process = Popen([get_synth(), "--voices=en"], stdout=PIPE)
                 output, _ = process.communicate()
 
                 if output:
                     lines = output.decode().split("\n")
 
-                    # Parse voices from espeak output (skip header line)
+                    # Parse voices from synth output (skip header line)
                     for line in lines[1:]:
                         parts = line.split()
                         if len(parts) > 1:
                             voices.append(parts[3])
             except Exception as e:
-                print(f"Error getting espeak voices: {e}")
+                print(f"Error getting synth voices: {e}")
     except Exception as e:
         print(f"Error loading voices: {e}")
         voices = ["default"]  # Provide at least a default option

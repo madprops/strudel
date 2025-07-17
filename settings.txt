@@ -1,4 +1,5 @@
-voice=en
-speed=1.0
+synth=espeak
+voice=pt
+speed=1.5
 num_items=50
 default_text=
