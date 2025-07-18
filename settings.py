@@ -5,6 +5,8 @@ from tkinter import messagebox
 from subprocess import Popen, PIPE
 
 import inputs as Inputs
+import widgets as Widgets
+import filterwid as Filter
 
 DEFAULTS = {
     "default_text": lambda: "",
@@ -26,8 +28,6 @@ volume_var = None
 speech = []
 voices = []
 volume_combo = None
-
-PAD_X = 5
 
 def get(key):
     value = settings.get(key, DEFAULTS[key]())
@@ -91,7 +91,7 @@ def setup_speed(container):
 
     # Speed selection with label
     speed_frame = Widgets.create_frame(container)
-    speed_frame.pack(side="left", padx=PAD_X)
+    speed_frame.pack(side="left", padx=Widgets.PAD_X)
 
     speed_label = Widgets.create_label(speed_frame, "Speed:")
     speed_label.pack(side="top", pady=(0, 2))
@@ -117,7 +117,7 @@ def setup_speed(container):
     # Remove focus and highlighting when item is selected
     def handle_speed_select(event):
         # Use tkinter's scheduler to shift focus after a short delay
-        window.after(10, lambda: (speed_combo.selection_clear(), window.focus_force()))
+        Window.window.after(10, lambda: (speed_combo.selection_clear(), Window.window.focus_force()))
         # Get the selected display label and convert to actual value
         selected_label = speed_var.get()
         actual_value = speed_map.get(selected_label, "1.0")  # Default to 1.0 if not found
@@ -131,7 +131,7 @@ def setup_voice(container):
 
     # Voice selection with label
     voice_frame = Widgets.create_frame(container)
-    voice_frame.pack(side="left", padx=PAD_X)
+    voice_frame.pack(side="left", padx=Widgets.PAD_X)
 
     voice_label = Widgets.create_label(voice_frame, "Voice:")
     voice_label.pack(side="top", pady=(0, 2))
@@ -144,7 +144,7 @@ def setup_voice(container):
     # Remove focus and highlighting when item is selected
     def handle_combobox_select(event):
         # Use tkinter's scheduler to shift focus after a short delay
-        window.after(1, lambda: (voice_combo.selection_clear(), window.focus_force()))
+        Window.window.after(1, lambda: (voice_combo.selection_clear(), Window.window.focus_force()))
 
     voice_combo.bind("<<ComboboxSelected>>", handle_combobox_select)
 
@@ -153,7 +153,7 @@ def setup_volume(container):
 
     # Volume selection with label
     volume_frame = Widgets.create_frame(container)
-    volume_frame.pack(side="left", padx=PAD_X)
+    volume_frame.pack(side="left", padx=Widgets.PAD_X)
 
     volume_label = Widgets.create_label(volume_frame, "Volume:")
     volume_label.pack(side="top", pady=(0, 2))
@@ -179,7 +179,7 @@ def setup_volume(container):
     # Remove focus and highlighting when item is selected
     def handle_volume_select(event):
         # Use tkinter's scheduler to shift focus after a short delay
-        window.after(10, lambda: (Settings.volume_combo.selection_clear(), window.focus_force()))
+        Window.window.after(10, lambda: (Settings.volume_combo.selection_clear(), Window.window.focus_force()))
         # Get the selected display label and convert to actual value
         selected_label = volume_var.get()
         actual_value = volume_map.get(selected_label, "1.0")  # Default to 1.0 if not found
@@ -309,7 +309,7 @@ def reset():
         set("volume", "1.0")
 
     # Clear any active filter
-    clear_filter()
+    Filter.clear()
 
     # Save changes
     save_speech()

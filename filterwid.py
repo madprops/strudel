@@ -46,11 +46,15 @@ def clear():
         if "filter_entry" in globals():
             filter_entry.focus_set()
 
-def apply(filter_text):
+def apply(filter_text=""):
     """Filter the speech entries based on the given text"""
     global indices
 
     Inputs.scroll_to_top()
+
+    if not filter_text:
+        # Get current filter text if not provided
+        filter_text = filter_var.get()
 
     # Ensure we have a clean starting point
     filter_text = filter_text.strip()
@@ -58,9 +62,9 @@ def apply(filter_text):
     # Make sure we have all the widgets we need
     num_items = Settings.get("num_items")
 
-    if len(row_frames) != num_items or len(input_entries) != num_items:
-        print(f"Warning: Widget count mismatch. Expected {num_items}, got {len(row_frames)} row frames, "
-              f"{len(input_entries)} entries")
+    if len(Inputs.row_frames) != num_items or len(Inputs.entries) != num_items:
+        print(f"Warning: Widget count mismatch. Expected {num_items}, got {len(Inputs.row_frames)} row frames, "
+              f"{len(Inputs.entries)} entries")
 
         return
 
@@ -71,7 +75,7 @@ def apply(filter_text):
         # Show all entry rows
         for n in range(num_items):
             # Use grid with the correct row to restore position
-            row_frames[n].grid(row=n, column=0, sticky="ew", padx=0, pady=1)
+            Inputs.row_frames[n].grid(row=n, column=0, sticky="ew", padx=0, pady=1)
 
         return
 
@@ -86,17 +90,17 @@ def apply(filter_text):
 
     # Check each entry against the filter
     for n in range(num_items):
-        if n < len(input_entries):
-            entry_text = input_entries[n].get().lower()
+        if n < len(Inputs.entries):
+            entry_text = Inputs.entries[n].get().lower()
 
             if filter_text in entry_text:
                 indices.append(n)
                 # Show this entry row and reposition it to be compact
-                row_frames[n].grid(row=visible_row, column=0, sticky="ew", padx=0, pady=1)
+                Inputs.row_frames[n].grid(row=visible_row, column=0, sticky="ew", padx=0, pady=1)
                 visible_row += 1
             else:
                 # Completely remove this entry from the grid
-                row_frames[n].grid_forget()
+                Inputs.row_frames[n].grid_forget()
 
 def focus():
     """Focus the filter entry."""

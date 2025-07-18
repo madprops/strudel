@@ -1,11 +1,26 @@
 from tkinter import ttk
 import tkinter as tk
 
+import window as Window
+
 BUTTON_HEIGHT = 1
 BUTTON_FONT = ("sans", 10)
 ENTRY_FONT = ("sans", 14)
 LABEL_FONT = ("sans", 12)
 COMBOBOX_FONT = ("sans", 12)
+PAD_X = 5
+
+def setup():
+    # Apply a style to make the combobox match button height
+    style = ttk.Style()
+    style.configure("Strudel.TCombobox", padding=(0, 4, 0, 4))  # Add padding to match button height
+
+    # Configure the dropdown popup to have larger text and wider arrow
+    style.map("TCombobox", fieldbackground=[("readonly", "#ffffff")])
+    style.configure("TCombobox", arrowsize=20)  # Make the dropdown arrow wider
+
+    # Configure the dropdown popup list style (for Windows and Linux)
+    Window.window.option_add("*TCombobox*Listbox.font", ("sans", 12))
 
 def create_entry(container):
     color_1 = "#cccccc"

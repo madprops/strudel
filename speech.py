@@ -6,15 +6,10 @@ from subprocess import Popen, PIPE
 
 import inputs as Inputs
 import settings as Settings
+import window as Window
 
 speech_lock = threading.Lock()
 current_speech_process = None
-window = None
-
-def setup(win):
-    global window
-    window = win
-    print(window)
 
 def callback(n, entry=None):
     if not entry:
@@ -95,7 +90,7 @@ def run_thread(n, s, v):
                 error_msg = error.decode().strip()
                 print(f"Synth error: {error_msg}")
                 # Use after() to schedule the messagebox from the main thread
-                window.after(0, lambda: messagebox.showerror("Speech Error", f"Failed to speak: {error_msg}"))
+                Window.window.after(0, lambda: messagebox.showerror("Speech Error", f"Failed to speak: {error_msg}"))
                 return
 
             # Voice settings will still be saved
@@ -105,12 +100,12 @@ def run_thread(n, s, v):
             if Settings.get("voice") != v:
                 Settings.set("voice", v)
                 # Use after() to schedule the save from the main thread
-                window.after(0, Settings.save)
+                Window.window.after(0, Settings.save)
 
     except Exception as e:
         print(e)
         # Use after() to schedule the messagebox from the main thread
-        window.after(0, lambda: messagebox.showerror("Error", "Failed to run synth"))
+        Window.window.after(0, lambda: messagebox.showerror("Error", "Failed to run synth"))
 
 def speak(n, s, v):
     """Start speech in a separate thread, stopping any current speech first"""

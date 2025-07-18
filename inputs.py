@@ -5,14 +5,18 @@ import widgets as Widgets
 import settings as Settings
 import filterwid as Filter
 import speech as Speech
+import window as Window
 
 entries = []
-row_frames = []     # Store references to row frames containing all elements
+row_frames = []  # Store references to row frames containing all elements
 canvas = None
 frame = None  # The frame containing the input entries
 
-def setup(window):
+def setup():
     global frame, row_frames, canvas
+
+    # Main window
+    window = Window.window
 
     # Create main container with scrolling ability
     main_container = Widgets.create_frame(window)
@@ -158,7 +162,7 @@ def move_item_down(index):
     Settings.save_speech()
 
     """Move a speech item down in the list (swap with the item below it)"""
-    if index >= len(speech) - 1:
+    if index >= len(Settings.speech) - 1:
         return  # Can't move the last item down
 
     # Swap entries in the speech list
