@@ -27,6 +27,7 @@ canvas = None
 
 PAD_X = 5
 BUTTON_SIZE = 10
+ENTRY_FONT = ("sans", 14)
 
 def main():
     try:
@@ -369,8 +370,7 @@ def make_window():
 
         btn.pack(side="left", padx=(0, 5), pady=2)
 
-        # Add the entry
-        entry = tk.Entry(row_frame, width=30, font=("sans", 14))
+        entry = create_entry(row_frame)
         entry.insert(0, speech[n])
         entry.pack(side="left", padx=0, pady=2, fill="x", expand=True)
         input_entries.append(entry)
@@ -404,7 +404,8 @@ def make_window():
     filter_frame.pack(fill="x", pady=(0, 5), padx=10)
 
     filter_var = tk.StringVar()
-    filter_entry = tk.Entry(filter_frame, textvariable=filter_var, width=30, font=("sans", 14))
+    filter_entry = create_entry(filter_frame)
+    filter_entry.configure(textvariable=filter_var)
     filter_entry.pack(side="left", fill="x", expand=True, pady=(5, 5))
 
     # Bind Escape key to clear the filter
@@ -940,6 +941,28 @@ def scroll_to_top():
     if "canvas" in globals():
         canvas.yview_moveto(0.0)  # Move view to the beginning (0.0 = top)
 
+def create_entry(container):
+    color_1 = "#cccccc"
+    border_color = "pink"
+
+    # Add the entry with styling
+    entry = tk.Entry(container, width=30, font=ENTRY_FONT,
+                    bg="#f0f0f0", fg="#000000",
+                    relief="solid", bd=1,
+                    highlightthickness=2,
+                    highlightbackground=color_1,
+                    highlightcolor=border_color)
+
+    # Add focus event handlers
+    def on_entry_focus_in(event):
+        event.widget.config(highlightbackground=color_1, highlightcolor=border_color)
+
+    def on_entry_focus_out(event):
+        event.widget.config(highlightbackground=color_1, highlightcolor=color_1)
+
+    entry.bind("<FocusIn>", on_entry_focus_in)
+    entry.bind("<FocusOut>", on_entry_focus_out)
+    return entry
 
 # Call the main function when the script is run directly
 if __name__ == "__main__":
