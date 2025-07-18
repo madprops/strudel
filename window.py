@@ -35,8 +35,6 @@ def setup():
     except Exception as e:
         print(f"Error setting window icon: {e}")
 
-    input_entries = []
-
     # Create top controls for voice, speed, and volume - centered at the top
     top_controls = Widgets.create_frame(window)
     top_controls.configure(height=60) # Set fixed height to give space for buttons at bottom
@@ -94,7 +92,7 @@ def handle_keyboard_shortcuts(event):
             Speech.callback(None, focused_entry)
         else:
             # Find the first non-empty entry
-            for i, entry in enumerate(input_entries):
+            for i, entry in enumerate(Inputs.entries):
 
                 if Filter.indices:
                     if i not in Filter.indices:
@@ -117,7 +115,7 @@ def get_focused_entry():
         return None
 
     # Check if the focused widget is one of our input entries
-    if focused in input_entries:
+    if focused in Inputs.entries:
         # Return the focused entry
         return focused
 

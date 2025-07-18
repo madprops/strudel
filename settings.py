@@ -7,6 +7,7 @@ from subprocess import Popen, PIPE
 import inputs as Inputs
 import widgets as Widgets
 import filterwid as Filter
+import window as Window
 
 DEFAULTS = {
     "default_text": lambda: "",

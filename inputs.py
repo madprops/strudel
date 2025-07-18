@@ -89,7 +89,6 @@ def setup():
 
     # Clear any previous references
     row_frames = []
-    input_entries = []
 
     for n in range(Settings.get("num_items")):
         # Create a frame for this row
