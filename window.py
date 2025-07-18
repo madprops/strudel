@@ -85,6 +85,9 @@ def handle_keyboard_shortcuts(event):
     """
     # Handle Enter key to play first non-empty input
     if event.keysym == "Return":
+        if Filter.on_enter():
+            return
+
         # Get focused entry
         focused_entry = get_focused_entry()
 

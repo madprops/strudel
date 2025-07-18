@@ -3,6 +3,8 @@ import tkinter as tk
 
 import inputs as Inputs
 import settings as Settings
+import speech as Speech
+import window as Window
 
 indices = None  # Track which entries are currently filtered (shown)
 filter_var = None  # Variable for filter input
@@ -119,3 +121,15 @@ def reset():
     if indices is not None:
         filter_var.set("")
         apply("")  # This will restore all items in their proper grid positions
+
+def on_enter():
+    focused = Window.window.focus_get()
+
+    if focused != filter_entry:
+        return False
+
+    if not len(indices):
+        Speech.callback(None, filter_entry)
+        return True
+
+    return False
