@@ -4,6 +4,8 @@ from pathlib import Path
 from tkinter import messagebox
 from subprocess import Popen, PIPE
 
+import inputs as Inputs
+
 DEFAULTS = {
     "default_text": lambda: "",
     "voice": lambda: voices[0] if voices else "",
@@ -174,6 +176,18 @@ def setup_volume(container):
     volume_combo = Widgets.create_combobox(volume_frame, volume_var, volume_labels)
     volume_combo.pack(side="top")
 
+    # Remove focus and highlighting when item is selected
+    def handle_volume_select(event):
+        # Use tkinter's scheduler to shift focus after a short delay
+        window.after(10, lambda: (Settings.volume_combo.selection_clear(), window.focus_force()))
+        # Get the selected display label and convert to actual value
+        selected_label = volume_var.get()
+        actual_value = volume_map.get(selected_label, "1.0")  # Default to 1.0 if not found
+        # Update settings when volume changes
+        settings["volume"] = actual_value
+
+    volume_combo.bind("<<ComboboxSelected>>", handle_volume_select)
+
 def get_speech():
     global speech
 
@@ -233,7 +247,7 @@ def get_voices():
 def save_speech():
     try:
         # Update the speech list with the current text in all input entries
-        for i, entry in enumerate(input_entries):
+        for i, entry in enumerate(Inputs.entries):
             if i < len(speech):
                 speech[i] = entry.get()
             else:
@@ -274,7 +288,7 @@ def reset():
         return
 
     # Reset all entry fields
-    for i, entry in enumerate(input_entries):
+    for i, entry in enumerate(Inputs.entries):
         entry.delete(0, tk.END)
         entry.insert(0, get("default_text"))
         speech[i] = get("default_text")
