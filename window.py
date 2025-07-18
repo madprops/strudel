@@ -104,6 +104,32 @@ def handle_keyboard_shortcuts(event):
                 if entry.get().strip():
                     Speech.callback(i)
                     break
+    elif event.keysym == "Up":
+        if Filter.focused():
+            Inputs.entries[0].focus_set()
+            return
+
+        # Get focused entry
+        focused_entry = get_focused_entry()
+
+        if focused_entry:
+            focused_index = Inputs.entries.index(focused_entry)
+
+            if focused_index > 0:
+                Inputs.entries[focused_index - 1].focus_set()
+    elif event.keysym == "Down":
+        if Filter.focused():
+            Inputs.entries[0].focus_set()
+            return
+
+        # Get focused entry
+        focused_entry = get_focused_entry()
+
+        if focused_entry:
+            focused_index = Inputs.entries.index(focused_entry)
+
+            if focused_index < len(Inputs.entries) - 1:
+                Inputs.entries[focused_index + 1].focus_set()
 
 def get_focused_entry():
     """Return the currently focused input entry widget, or None if none focused or if focus is elsewhere.

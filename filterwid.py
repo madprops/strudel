@@ -123,13 +123,15 @@ def reset():
         apply("")  # This will restore all items in their proper grid positions
 
 def on_enter():
-    focused = Window.window.focus_get()
-
-    if focused != filter_entry:
+    if not focused:
         return False
 
-    if not len(indices):
+    if indices and (not len(indices)):
         Speech.callback(None, filter_entry)
         return True
 
     return False
+
+def focused():
+    focused = Window.window.focus_get()
+    return focused == filter_entry
