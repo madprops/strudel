@@ -59,6 +59,14 @@ def apply(filter_text=""):
     # Ensure we have a clean starting point
     filter_text = filter_text.strip()
 
+    # Check if it's a number to filter by index
+    if filter_text.isdigit():
+        num = int(filter_text)
+
+        if num <= len(Inputs.entries):
+            entry = Inputs.entries[num - 1]
+            filter_text = entry.get().strip() if entry else ""
+
     # Make sure we have all the widgets we need
     num_items = Settings.get("num_items")
 

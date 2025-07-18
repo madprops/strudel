@@ -8,6 +8,7 @@ import inputs as Inputs
 import widgets as Widgets
 import filterwid as Filter
 import window as Window
+import settings as Settings
 
 DEFAULTS = {
     "default_text": lambda: "",
