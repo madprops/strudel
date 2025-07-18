@@ -1,2 +1,3 @@
 speech.txt
 *.pyc
+__pycache__/
